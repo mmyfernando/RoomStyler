@@ -7,8 +7,17 @@ public class Home extends JFrame {
     private JButton createNewDesignButton;
     private JButton manageDesignButton;
     private JButton logoutButton;
+    private JLabel nameLabel;
 
     public Home() {
+
+        User currentUser = UserManager.getCurrentUser();
+        if (currentUser != null) {
+            nameLabel.setText("Hi, " + currentUser.getUsername());
+        } else {
+            nameLabel.setText("Welcome, Guest");
+        }
+
 
         createNewDesignButton.addActionListener(new ActionListener() {
             @Override
@@ -27,8 +36,22 @@ public class Home extends JFrame {
         logoutButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Login login = new Login();
-                Helper.navigateToFrame(Home.this, login, login.mainPanel, "Login", 1000, 800);
+                int result = JOptionPane.showConfirmDialog(
+                        Home.this,
+                        "Are you sure you want to logout?",
+                        "Confirm Logout",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+
+                // Only proceed with logout if user confirms
+                if (result == JOptionPane.YES_OPTION) {
+                    // Clear the current user when logging out
+                    UserManager.logout();
+
+                    Login login = new Login();
+                    Helper.navigateToFrame(Home.this, login, login.mainPanel, "Login", 1000, 800);
+                }
             }
         });
     }
