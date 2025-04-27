@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 import java.util.List;
 
 public class ManageDesign extends JFrame {
@@ -9,11 +10,28 @@ public class ManageDesign extends JFrame {
      private JButton manageDesignsButton;
      private JPanel listPanel;
 
+     // Define colors
+     private final Color DARK_GREEN = new Color(0, 80, 0);
+     private final Color LIGHT_GRAY = new Color(178, 191, 173);
+     private final Color EDIT_BUTTON_COLOR = new Color(0, 80, 0);
+     private final Color VIEW_3D_BUTTON_COLOR = new Color(153, 76, 0);
+     private final Color DELETE_BUTTON_COLOR = new Color(100, 0, 0);
+
      public ManageDesign() {
           // Set layout for list panel
           listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
 
-          // Setup back button
+          // Style back button
+          manageDesignsButton.setIcon(createBackIcon());
+          manageDesignsButton.setText("Manage Designs");
+          manageDesignsButton.setFont(new Font("Arial", Font.BOLD, 18));
+          manageDesignsButton.setForeground(DARK_GREEN);
+          manageDesignsButton.setHorizontalAlignment(SwingConstants.LEFT);
+          manageDesignsButton.setBorderPainted(false);
+          manageDesignsButton.setContentAreaFilled(false);
+          manageDesignsButton.setFocusPainted(false);
+
+          // Setup back button action
           manageDesignsButton.addActionListener(new ActionListener() {
                @Override
                public void actionPerformed(ActionEvent e) {
@@ -24,6 +42,22 @@ public class ManageDesign extends JFrame {
 
           // Load the saved designs
           loadSavedDesigns();
+     }
+
+     private ImageIcon createBackIcon() {
+          // Create a simple back arrow icon - you can replace with an actual image file
+          int size = 25;
+          BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+          Graphics2D g = image.createGraphics();
+          g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+          g.setColor(DARK_GREEN);
+
+          int[] xPoints = {size - 5, 5, size - 5};
+          int[] yPoints = {5, size / 2, size - 5};
+          g.fillPolygon(xPoints, yPoints, 3);
+
+          g.dispose();
+          return new ImageIcon(image);
      }
 
      private void loadSavedDesigns() {
@@ -53,57 +87,60 @@ public class ManageDesign extends JFrame {
      }
 
      private void addDesignPanel(Design design) {
-          // Create a panel for this design
+          // Create a panel for this design with gray background
           JPanel designPanel = new JPanel();
-          designPanel.setLayout(new BorderLayout());
-          designPanel.setBorder(BorderFactory.createCompoundBorder(
-                  BorderFactory.createEmptyBorder(5, 5, 5, 5),
-                  BorderFactory.createLineBorder(Color.GRAY)
-          ));
+          designPanel.setLayout(new BorderLayout(10, 0));
+          designPanel.setBackground(LIGHT_GRAY);
+          designPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
 
-          // Design info panel
-          JPanel infoPanel = new JPanel(new GridLayout(3, 1));
+          // Design info panel on the left
+          JPanel infoPanel = new JPanel(new GridLayout(3, 1, 0, 5));
+          infoPanel.setBackground(LIGHT_GRAY);
 
           Room room = design.getRoom();
-          String roomInfo = String.format("Room: %s (%.1f x %.1f x %.1f)",
-                  room.getShape(),
+          String roomInfo = String.format("Room : Rectangle( %.1fm x %.1fm x %.1fm )",
                   room.getWidth(),
                   room.getLength(),
                   room.getHeight()
           );
 
-          JLabel nameLabel = new JLabel("Name: " + design.getName());
+          JLabel nameLabel = new JLabel("Name : " + design.getName());
           nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
 
-          JLabel dateLabel = new JLabel("Modified: " + design.getLastModifiedDate().toString());
-          dateLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-
           JLabel roomLabel = new JLabel(roomInfo);
+          roomLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+
+          String formattedDate = formatDate(design.getLastModifiedDate());
+          JLabel dateLabel = new JLabel("Modified : " + formattedDate);
+          dateLabel.setFont(new Font("Arial", Font.PLAIN, 14));
 
           infoPanel.add(nameLabel);
           infoPanel.add(roomLabel);
           infoPanel.add(dateLabel);
 
-          // Buttons panel
-          JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 5, 0));
+          // Buttons panel on the right with vertical layout
+          JPanel buttonPanel = new JPanel(new GridLayout(3, 1, 0, 10));
+          buttonPanel.setBackground(LIGHT_GRAY);
+          buttonPanel.setPreferredSize(new Dimension(150, 120)); // Fixed width for buttons
 
-          JButton viewButton = new JButton("View");
-          viewButton.addActionListener(e -> {
+          // Edit button (replace View button)
+          JButton editButton = createStyledButton("Edit", EDIT_BUTTON_COLOR, Color.WHITE);
+          editButton.addActionListener(e -> {
                DesignManager.setCurrentDesign(design);
                Design2D design2D = new Design2D();
                Helper.navigateToFrame(this, design2D, design2D.mainPanel, "Design 2D", 1000, 800);
           });
 
-          JButton view3DButton = new JButton("View 3D");
+          // View 3D button with brown background
+          JButton view3DButton = createStyledButton("View 3D", VIEW_3D_BUTTON_COLOR, Color.WHITE);
           view3DButton.addActionListener(e -> {
                DesignManager.setCurrentDesign(design);
                Design3D design3D = new Design3D();
                Helper.navigateToFrame(this, design3D, design3D.mainPanel, "Design 3D", 1000, 800);
           });
 
-          JButton deleteButton = new JButton("Delete");
-          deleteButton.setBackground(new Color(220, 53, 69)); // Red color
-          deleteButton.setForeground(Color.WHITE);
+          // Delete button with dark red background
+          JButton deleteButton = createStyledButton("Delete", DELETE_BUTTON_COLOR, Color.WHITE);
           deleteButton.addActionListener(e -> {
                int result = JOptionPane.showConfirmDialog(
                        this,
@@ -124,15 +161,15 @@ public class ManageDesign extends JFrame {
                }
           });
 
-          buttonPanel.add(viewButton);
+          buttonPanel.add(editButton);
           buttonPanel.add(view3DButton);
           buttonPanel.add(deleteButton);
 
           // Add panels to design panel
           designPanel.add(infoPanel, BorderLayout.CENTER);
-          designPanel.add(buttonPanel, BorderLayout.SOUTH);
+          designPanel.add(buttonPanel, BorderLayout.EAST);
 
-          // Add design panel to list
+          // Add design panel to list with vertical spacing
           JPanel wrapperPanel = new JPanel(new BorderLayout());
           wrapperPanel.add(designPanel, BorderLayout.CENTER);
           wrapperPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
@@ -141,5 +178,22 @@ public class ManageDesign extends JFrame {
 
           // Add a separator
           listPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+     }
+
+     private JButton createStyledButton(String text, Color bgColor, Color fgColor) {
+          JButton button = new JButton(text);
+          button.setBackground(bgColor);
+          button.setForeground(fgColor);
+          button.setFont(new Font("Arial", Font.BOLD, 14));
+          button.setFocusPainted(false);
+          button.setBorderPainted(false);
+          button.setPreferredSize(new Dimension(150, 35));
+          return button;
+     }
+
+     private String formatDate(java.util.Date date) {
+          // Format date to match the design (e.g., "15 APR, 2025")
+          java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM, yyyy");
+          return sdf.format(date).toUpperCase();
      }
 }

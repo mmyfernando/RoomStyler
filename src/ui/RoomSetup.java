@@ -17,8 +17,8 @@ public class RoomSetup extends JFrame {
     private JButton floorColorButton1;
 
     // Default colors
-    private Color wallColor = new Color(76, 153, 115); // Default green
-    private Color floorColor = new Color(0, 153, 255); // Default blue
+    private Color wallColor = new Color(0, 186, 255); // Default green
+    private Color floorColor = new Color(157, 27, 0); // Default blue
 
     public RoomSetup() {
         // Initialize dropdown if needed
@@ -45,6 +45,8 @@ public class RoomSetup extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 if (validateInputs()) {
                     // Create a Room object with the user's specifications
+                    DesignManager.resetCurrentDesign();
+
                     String shape = shapeDropdown.getSelectedItem().toString();
                     double width = Double.parseDouble(widthInput.getText());
                     double length = Double.parseDouble(lengthInput.getText());
@@ -69,8 +71,8 @@ public class RoomSetup extends JFrame {
                 widthInput.setText("");
                 heightInput.setText("");
                 lengthInput.setText("");
-                wallColor = new Color(76, 153, 115);
-                floorColor = new Color(0, 153, 255);
+                wallColor = new Color(191, 202, 214);
+                floorColor = new Color(157, 27, 0);
                 wallColorButton.setBackground(wallColor);
                 floorColorButton1.setBackground(floorColor);
             }

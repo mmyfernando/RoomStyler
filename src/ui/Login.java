@@ -25,28 +25,28 @@ public class Login extends JFrame {
         loginButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-//                String username = userNameInput.getText();
-//                String password = new String(passwordInput.getPassword());
-//
-//                if (username.isEmpty() || password.isEmpty()) {
-//                    errorLabel.setText("Username and password cannot be empty");
-//                    return;
-//                }
-//
-//                if (UserManager.authenticateUser(username, password)) {
-//                    // Login successful
-//                    errorLabel.setText("");
-//                    Home home = new Home();
-//                    Helper.navigateToFrame(Login.this, home, home.mainPanel, "Home", 1000, 800);
-//                } else {
-//                    // Login failed
-//                    errorLabel.setText("Invalid username or password");
-//                    passwordInput.setText(""); // Clear password field
-//                }
+                String username = userNameInput.getText();
+                String password = new String(passwordInput.getPassword());
+
+                if (username.isEmpty() || password.isEmpty()) {
+                    errorLabel.setText("Username and password cannot be empty");
+                    return;
+                }
+
+                if (UserManager.authenticateUser(username, password)) {
+                    // Login successful
+                    errorLabel.setText("");
+                    Home home = new Home();
+                    Helper.navigateToFrame(Login.this, home, home.mainPanel, "Home", 1000, 800);
+                } else {
+                    // Login failed
+                    errorLabel.setText("Invalid username or password");
+                    passwordInput.setText(""); // Clear password field
+                }
 
                 //skip login for testing
-                Home home = new Home();
-                Helper.navigateToFrame(Login.this, home, home.mainPanel, "Home", 1000, 800);
+//                Home home = new Home();
+//                Helper.navigateToFrame(Login.this, home, home.mainPanel, "Home", 1000, 800);
             }
         });
     }
