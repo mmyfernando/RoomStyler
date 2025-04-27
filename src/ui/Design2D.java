@@ -304,6 +304,7 @@ public class Design2D extends JFrame {
                     break;
                 default:
                     // Default to square for unknown shapes
+                    System.out.println("\n=== ROOM DEBUG INFO 1 ===");
                     int x = (panelWidth - maxSize) / 2;
                     int y = (panelHeight - maxSize) / 2;
                     g2d.fillRect(x, y, maxSize, maxSize);
@@ -323,25 +324,61 @@ public class Design2D extends JFrame {
     private void drawRectangularRoom(Graphics2D g2d, int panelWidth, int panelHeight, int maxSize) {
         if (currentRoom == null) return;
 
-        // For rectangle, use the actual width and length ratio
-        double widthToLengthRatio = (double) currentRoom.getWidth() / currentRoom.getLength();
-        int displayWidth = maxSize;
-        int displayHeight = (int) (maxSize / widthToLengthRatio);
+        // Get actual dimensions from the room
+        double roomWidth = currentRoom.getWidth();
+        double roomLength = currentRoom.getLength();
 
-        // Adjust if the height is too large
-        if (displayHeight > panelHeight - 60) {
-            displayHeight = panelHeight - 60;
-            displayWidth = (int) (displayHeight * widthToLengthRatio);
+        // Calculate the aspect ratio (width:length)
+        double aspectRatio = roomWidth / roomLength;
+
+        // Initialize display dimensions
+        int displayWidth, displayHeight;
+
+        // Determine which dimension should be set to maxSize
+        if (aspectRatio > 1.0) {
+            // Room is wider than long
+            displayWidth = maxSize;
+            displayHeight = (int)(maxSize / aspectRatio);
+        } else {
+            // Room is longer than wide
+            displayHeight = maxSize;
+            displayWidth = (int)(maxSize * aspectRatio);
         }
 
+        // Make sure neither dimension exceeds panel constraints
+        if (displayWidth > panelWidth - 60) {
+            displayWidth = panelWidth - 60;
+            displayHeight = (int)(displayWidth / aspectRatio);
+        }
+
+        if (displayHeight > panelHeight - 60) {
+            displayHeight = panelHeight - 60;
+            displayWidth = (int)(displayHeight * aspectRatio);
+        }
+
+        // Center the room in the panel
         int x = (panelWidth - displayWidth) / 2;
         int y = (panelHeight - displayHeight) / 2;
 
+        // Draw the room
         g2d.fillRect(x, y, displayWidth, displayHeight);
 
-        // Add a border to the room for clarity
+        // Add a border
         g2d.setColor(Color.BLACK);
         g2d.drawRect(x, y, displayWidth, displayHeight);
+
+        // Add dimension labels for clarity
+        g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+        FontMetrics fm = g2d.getFontMetrics();
+
+        // Width label (horizontal)
+        String widthLabel = String.format("%.1fm", roomWidth);
+        int textWidth = fm.stringWidth(widthLabel);
+        g2d.drawString(widthLabel, x + (displayWidth - textWidth) / 2, y - 5);
+
+        // Length label (vertical)
+        String lengthLabel = String.format("%.1fm", roomLength);
+        g2d.drawString(lengthLabel, x - fm.stringWidth(lengthLabel) - 5, y + displayHeight / 2);
     }
 
     private void drawLShapedRoom(Graphics2D g2d, int panelWidth, int panelHeight, int maxSize) {

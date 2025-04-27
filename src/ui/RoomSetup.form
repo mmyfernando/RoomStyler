@@ -227,7 +227,7 @@
                   <font size="16"/>
                   <foreground color="-13947600"/>
                   <model>
-                    <item value="Rectange"/>
+                    <item value="Rectangle"/>
                     <item value="L Shape"/>
                     <item value="T Shape"/>
                   </model>
