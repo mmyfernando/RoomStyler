@@ -5,6 +5,14 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/img" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/model" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/ui" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/util" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/model/geometry" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/renderer" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/renderer/furniture" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/renderer/room" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/renderer/util" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
