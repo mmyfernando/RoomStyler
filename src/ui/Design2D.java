@@ -1,13 +1,12 @@
 import javax.swing.*;
+import javax.swing.plaf.PanelUI;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Design2D extends JFrame {
+    // UI Components from UI Designer
     public JPanel mainPanel;
     private JButton a2DDesignButton;
     private JButton resetButton;
@@ -19,6 +18,9 @@ public class Design2D extends JFrame {
     private JButton addFurnitureButton;
     private JButton changeColorButton;
     private JPanel titlePanel;
+    private JPanel infoPanel;
+    private JLabel dimentionLabel;
+    private JLabel shapeLabel;
 
     // Design state
     private Room currentRoom;
@@ -28,49 +30,175 @@ public class Design2D extends JFrame {
     private Color currentFurnitureColor = Color.ORANGE;
 
     public Design2D() {
-        // Get the current room from RoomManager
-        currentRoom = RoomManager.getCurrentRoom();
+        // First, check if there's a current design in the DesignManager
+        currentDesign = DesignManager.getCurrentDesign();
 
-        if (currentRoom == null) {
-            // If no room exists, show an error and return to room setup
-            JOptionPane.showMessageDialog(this,
-                    "No room configuration found. Please set up a room first.",
-                    "Room Required",
-                    JOptionPane.ERROR_MESSAGE);
+        // If there's a current design, use its room
+        if (currentDesign != null) {
+            currentRoom = currentDesign.getRoom();
+            // Important: Load the furniture items from the design
+            loadFurnitureFromDesign();
+        } else {
+            // No existing design, get the current room from RoomManager
+            currentRoom = RoomManager.getCurrentRoom();
 
-            RoomSetup roomSetup = new RoomSetup();
-            Helper.navigateToFrame(this, roomSetup, roomSetup.mainPanel, "Room Setup", 1000, 800);
-            return;
+            if (currentRoom == null) {
+                // If no room exists, show an error and return to room setup
+                JOptionPane.showMessageDialog(this,
+                        "No room configuration found. Please set up a room first.",
+                        "Room Required",
+                        JOptionPane.ERROR_MESSAGE);
+
+                RoomSetup roomSetup = new RoomSetup();
+                Helper.navigateToFrame(this, roomSetup, roomSetup.mainPanel, "Room Setup", 1000, 800);
+                return;
+            }
+
+            // Create a new design with the current room
+            currentDesign = new Design("New Design", currentRoom);
         }
 
-        // Create a new design with the current room
-        currentDesign = new Design("New Design", currentRoom);
+        // This is important: we need to wait until all UI components are created by the form
+        SwingUtilities.invokeLater(() -> {
+            // Update UI elements with current room information
+            updateRoomInformation();
 
-        // Setup layout for the main panel
-        setupLayout();
+            // Configure room panel for drawing and interaction
+            configureRoomPanel();
 
-        a2DDesignButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                Home home = new Home();
-                Helper.navigateToFrame(Design2D.this, home, home.mainPanel, "Home", 1000, 800);
+            // Configure furniture panel and populate combo box
+            configureFurniturePanel();
+
+            // Set up all the button event listeners
+            setupEventListeners();
+
+            // Force a repaint to make sure the room and furniture show up
+            if (roomPanel != null) {
+                roomPanel.repaint();
             }
         });
+    }
 
-        view3DButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+    // New method to load furniture items from the design
+    private void loadFurnitureFromDesign() {
+        if (currentDesign != null) {
+            // Clear the current furniture list
+            furnitureItems.clear();
+
+            // Add all items from the current design to our furniture list
+            for (FurnitureItem item : currentDesign.getItems()) {
+                furnitureItems.add(item);
+            }
+        }
+    }
+
+    private void updateRoomInformation() {
+        // Update dimension and shape labels with current room information
+        if (dimentionLabel != null && currentRoom != null) {
+            dimentionLabel.setText("Room Dimensions: " +
+                    currentRoom.getWidth() + "m x " +
+                    currentRoom.getLength() + "m x " +
+                    currentRoom.getHeight() + "m");
+        }
+
+        if (shapeLabel != null && currentRoom != null) {
+            shapeLabel.setText("Room Shape: " + currentRoom.getShape());
+        }
+    }
+
+    private void configureRoomPanel() {
+        if (roomPanel != null) {
+            // Make sure the room panel has a proper size
+            roomPanel.setPreferredSize(new Dimension(600, 500));
+            roomPanel.setBackground(Color.WHITE);
+
+            // Instead of replacing the panel, add a component listener to it
+            roomPanel.addComponentListener(new ComponentAdapter() {
+                @Override
+                public void componentShown(ComponentEvent e) {
+                    roomPanel.repaint();
+                }
+
+                @Override
+                public void componentResized(ComponentEvent e) {
+                    roomPanel.repaint();
+                }
+            });
+
+            // Override the panel's paint method to draw our custom content
+            roomPanel.addContainerListener(new ContainerAdapter() {
+                @Override
+                public void componentAdded(ContainerEvent e) {
+                    roomPanel.repaint();
+                }
+            });
+
+            // Create a custom painting override
+            roomPanel.addPropertyChangeListener("UI", evt -> roomPanel.repaint());
+
+            // Important: Replace the UI delegate to enable custom painting without replacing the panel
+            roomPanel.setUI(new javax.swing.plaf.PanelUI() {
+                @Override
+                public void paint(Graphics g, JComponent c) {
+                    super.paint(g, c);
+                    drawRoom(g);
+                    drawFurniture(g);
+                }
+            });
+
+            // Setup mouse handling for the room panel
+            roomPanel.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    selectFurnitureAt(e.getX(), e.getY());
+                }
+            });
+
+            roomPanel.addMouseMotionListener(new MouseAdapter() {
+                @Override
+                public void mouseDragged(MouseEvent e) {
+                    if (selectedItem != null) {
+                        selectedItem.setPosition(new Point(e.getX(), e.getY()));
+                        roomPanel.repaint();
+                    }
+                }
+            });
+        }
+    }
+
+    private void configureFurniturePanel() {
+        if (furnitureTypeCombo != null) {
+            // Clear and populate furniture type combo box
+            furnitureTypeCombo.removeAllItems();
+            furnitureTypeCombo.addItem("Chair");
+            furnitureTypeCombo.addItem("Dining Table");
+            furnitureTypeCombo.addItem("Side Table");
+        }
+    }
+
+    private void setupEventListeners() {
+        // Home button
+        if (a2DDesignButton != null) {
+            a2DDesignButton.addActionListener(e -> {
+                Home home = new Home();
+                Helper.navigateToFrame(Design2D.this, home, home.mainPanel, "Home", 1000, 800);
+            });
+        }
+
+        // View 3D button
+        if (view3DButton != null) {
+            view3DButton.addActionListener(e -> {
                 // Save the current design to be accessed by the 3D view
                 DesignManager.setCurrentDesign(currentDesign);
 
                 Design3D design3D = new Design3D();
                 Helper.navigateToFrame(Design2D.this, design3D, design3D.mainPanel, "Design 3D", 1000, 800);
-            }
-        });
+            });
+        }
 
-        saveButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        // Save button
+        if (saveButton != null) {
+            saveButton.addActionListener(e -> {
                 String designName = JOptionPane.showInputDialog(Design2D.this,
                         "Enter a name for this design:",
                         "Save Design",
@@ -84,12 +212,12 @@ public class Design2D extends JFrame {
                             "Save Successful",
                             JOptionPane.INFORMATION_MESSAGE);
                 }
-            }
-        });
+            });
+        }
 
-        resetButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        // Reset button
+        if (resetButton != null) {
+            resetButton.addActionListener(e -> {
                 int result = JOptionPane.showConfirmDialog(Design2D.this,
                         "Are you sure you want to clear all furniture items?",
                         "Reset Design",
@@ -100,19 +228,17 @@ public class Design2D extends JFrame {
                     currentDesign = new Design("New Design", currentRoom);
                     roomPanel.repaint();
                 }
-            }
-        });
+            });
+        }
 
-        addFurnitureButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                addSelectedFurniture();
-            }
-        });
+        // Add furniture button
+        if (addFurnitureButton != null) {
+            addFurnitureButton.addActionListener(e -> addSelectedFurniture());
+        }
 
-        changeColorButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        // Change color button
+        if (changeColorButton != null) {
+            changeColorButton.addActionListener(e -> {
                 Color newColor = JColorChooser.showDialog(
                         Design2D.this,
                         "Choose Furniture Color",
@@ -121,163 +247,188 @@ public class Design2D extends JFrame {
                 if (newColor != null) {
                     currentFurnitureColor = newColor;
 
-                    // If an item is selected, change its color
+                    // If an item is selected, change ONLY its color (not all items)
                     if (selectedItem != null) {
                         selectedItem.setColor(newColor);
                         roomPanel.repaint();
                     }
+                    // If no item is selected, the color will be used for new furniture
                 }
-            }
-        });
-    }
-
-    private void setupLayout() {
-        // Set the main panel layout
-        mainPanel.setLayout(new BorderLayout());
-        mainPanel.add(a2DDesignButton, BorderLayout.WEST);
-
-        // Add room information at the top
-        JPanel infoPanel = new JPanel(new GridLayout(2, 1));
-        JLabel dimensionsLabel = new JLabel("Room Dimensions: " +
-                currentRoom.getWidth() + "m x " +
-                currentRoom.getLength() + "m x " +
-                currentRoom.getHeight() + "m");
-        JLabel shapeLabel = new JLabel("Room Shape: " + currentRoom.getShape());
-
-        infoPanel.add(dimensionsLabel);
-        infoPanel.add(shapeLabel);
-        mainPanel.add(infoPanel, BorderLayout.NORTH);
-
-        // Setup room panel for drawing
-        setupRoomPanel();
-
-        // Setup furniture panel
-        setupFurniturePanel();
-
-        // Add room panel to center
-        mainPanel.add(roomPanel, BorderLayout.CENTER);
-
-        // Add furniture panel to east
-        mainPanel.add(furniturePanel, BorderLayout.EAST);
-
-        // Create bottom panel for buttons
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 3));
-        buttonPanel.add(resetButton);
-        buttonPanel.add(saveButton);
-        buttonPanel.add(view3DButton);
-
-        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-    }
-
-    private void setupRoomPanel() {
-        // If roomPanel doesn't exist yet (in case it was created via GUI designer), create it
-        if (roomPanel == null) {
-            roomPanel = new JPanel();
+            });
         }
-
-        roomPanel.setLayout(null); // Use absolute positioning
-
-        roomPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                drawRoom(g);
-                drawFurniture(g);
-            }
-        };
-
-        roomPanel.setBackground(Color.WHITE);
-
-        // Add mouse listeners for interacting with furniture
-        roomPanel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                selectFurnitureAt(e.getX(), e.getY());
-            }
-        });
-
-        roomPanel.addMouseMotionListener(new MouseAdapter() {
-            @Override
-            public void mouseDragged(MouseEvent e) {
-                if (selectedItem != null) {
-                    selectedItem.setPosition(new Point(e.getX(), e.getY()));
-                    roomPanel.repaint();
-                }
-            }
-        });
-    }
-
-    private void setupFurniturePanel() {
-        // If furniturePanel doesn't exist yet, create it
-        if (furniturePanel == null) {
-            furniturePanel = new JPanel();
-        }
-
-        furniturePanel.setLayout(new BorderLayout());
-        furniturePanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEmptyBorder(5, 5, 5, 5),
-                BorderFactory.createTitledBorder("Furniture Type:")
-        ));
-
-        // Initialize the furniture type combo box if it doesn't exist
-        if (furnitureTypeCombo == null) {
-            furnitureTypeCombo = new JComboBox<>();
-        }
-
-        // Clear and add items
-        furnitureTypeCombo.removeAllItems();
-        furnitureTypeCombo.addItem("Chair");
-        furnitureTypeCombo.addItem("Dining Table");
-        furnitureTypeCombo.addItem("Side Table");
-
-        // Create button panel
-        JPanel buttonPanel = new JPanel(new GridLayout(2, 1, 0, 5));
-
-        // Initialize buttons if they don't exist
-        if (addFurnitureButton == null) {
-            addFurnitureButton = new JButton("Add Furniture");
-        }
-
-        if (changeColorButton == null) {
-            changeColorButton = new JButton("Change Color");
-        }
-
-        buttonPanel.add(changeColorButton);
-        buttonPanel.add(addFurnitureButton);
-
-        // Add components to furniture panel
-        furniturePanel.add(furnitureTypeCombo, BorderLayout.NORTH);
-        furniturePanel.add(new JScrollPane(new JPanel()), BorderLayout.CENTER); // Empty scroll panel for spacing
-        furniturePanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        // Set preferred width
-        furniturePanel.setPreferredSize(new Dimension(200, 500));
     }
 
     private void drawRoom(Graphics g) {
-        int panelWidth = roomPanel.getWidth();
-        int panelHeight = roomPanel.getHeight();
+        if (roomPanel == null || currentRoom == null) return;
 
-        // Calculate the size of the room to fit panel
-        int roomWidth = Math.min(panelWidth - 40, panelHeight - 40);
+        Graphics2D g2d = (Graphics2D) g.create();
 
-        // Center the room in the panel
-        int x = (panelWidth - roomWidth) / 2;
-        int y = (panelHeight - roomWidth) / 2;
+        try {
+            int panelWidth = roomPanel.getWidth();
+            int panelHeight = roomPanel.getHeight();
 
-        // Draw the room (as a simple rectangle for now)
-        g.setColor(currentRoom.getWallColor());
-        g.fillRect(x, y, roomWidth, roomWidth);
+            if (panelWidth <= 0 || panelHeight <= 0) return;
+
+            // Draw a border around the panel to make it visible
+            g2d.setColor(Color.LIGHT_GRAY);
+            g2d.drawRect(0, 0, panelWidth-1, panelHeight-1);
+
+            // Calculate the size of the room to fit panel
+            int maxSize = Math.min(panelWidth - 60, panelHeight - 60);
+
+            if (maxSize <= 0) return;
+
+            // Get the room's shape
+            String roomShape = currentRoom.getShape().toLowerCase();
+
+            // Draw the room based on its shape
+            g2d.setColor(currentRoom.getFloorColor());
+
+            switch (roomShape) {
+                case "rectangle":
+                    drawRectangularRoom(g2d, panelWidth, panelHeight, maxSize);
+                    break;
+                case "l-shape":
+                case "l-shaped":
+                case "l shape":
+                case "l shaped":
+                case "l":
+                    drawLShapedRoom(g2d, panelWidth, panelHeight, maxSize);
+                    break;
+                case "t-shape":
+                case "t-shaped":
+                case "t shape":
+                case "t shaped":
+                case "t":
+                    drawTShapedRoom(g2d, panelWidth, panelHeight, maxSize);
+                    break;
+                default:
+                    // Default to square for unknown shapes
+                    int x = (panelWidth - maxSize) / 2;
+                    int y = (panelHeight - maxSize) / 2;
+                    g2d.fillRect(x, y, maxSize, maxSize);
+                    g2d.setColor(Color.BLACK);
+                    g2d.drawRect(x, y, maxSize, maxSize);
+            }
+
+            // Draw a coordinate system to help debug
+            g2d.setColor(Color.GRAY);
+            g2d.drawLine(panelWidth/2, 0, panelWidth/2, panelHeight);
+            g2d.drawLine(0, panelHeight/2, panelWidth, panelHeight/2);
+        } finally {
+            g2d.dispose();
+        }
+    }
+
+    private void drawRectangularRoom(Graphics2D g2d, int panelWidth, int panelHeight, int maxSize) {
+        if (currentRoom == null) return;
+
+        // For rectangle, use the actual width and length ratio
+        double widthToLengthRatio = (double) currentRoom.getWidth() / currentRoom.getLength();
+        int displayWidth = maxSize;
+        int displayHeight = (int) (maxSize / widthToLengthRatio);
+
+        // Adjust if the height is too large
+        if (displayHeight > panelHeight - 60) {
+            displayHeight = panelHeight - 60;
+            displayWidth = (int) (displayHeight * widthToLengthRatio);
+        }
+
+        int x = (panelWidth - displayWidth) / 2;
+        int y = (panelHeight - displayHeight) / 2;
+
+        g2d.fillRect(x, y, displayWidth, displayHeight);
+
+        // Add a border to the room for clarity
+        g2d.setColor(Color.BLACK);
+        g2d.drawRect(x, y, displayWidth, displayHeight);
+    }
+
+    private void drawLShapedRoom(Graphics2D g2d, int panelWidth, int panelHeight, int maxSize) {
+        int baseSize = (int)(maxSize * 0.8);
+        int extension = (int)(maxSize * 0.4);
+
+        int x = (panelWidth - baseSize) / 2;
+        int y = (panelHeight - baseSize) / 2;
+
+        // Draw L-shape using two rectangles
+        // Main rectangle
+        g2d.fillRect(x, y, baseSize, baseSize);
+
+        // Extension rectangle (to form the L)
+        g2d.fillRect(x - extension, y + baseSize - extension, extension, extension);
+
+        // Draw border
+        g2d.setColor(Color.BLACK);
+        // Draw the outer L shape border
+        g2d.drawRect(x, y, baseSize, baseSize);
+        g2d.drawRect(x - extension, y + baseSize - extension, extension, extension);
+
+        // Draw the inner corner edge (to complete the L shape)
+        g2d.drawLine(x, y + baseSize - extension, x, y + baseSize);
+        g2d.drawLine(x, y + baseSize - extension, x - extension, y + baseSize - extension);
+    }
+
+    private void drawTShapedRoom(Graphics2D g2d, int panelWidth, int panelHeight, int maxSize) {
+        int baseWidth = (int)(maxSize * 0.8);
+        int baseHeight = (int)(maxSize * 0.6);
+        int topWidth = (int)(maxSize * 0.4);
+        int topHeight = (int)(maxSize * 0.4);
+
+        int baseX = (panelWidth - baseWidth) / 2;
+        int baseY = (panelHeight - baseHeight + topHeight) / 2;
+        int topX = (panelWidth - topWidth) / 2;
+        int topY = baseY - topHeight;
+
+        // Draw T-shape using two rectangles
+        // Horizontal bar of T
+        g2d.fillRect(baseX, baseY, baseWidth, baseHeight);
+
+        // Vertical bar of T
+        g2d.fillRect(topX, topY, topWidth, topHeight);
+
+        // Draw border
+        g2d.setColor(Color.BLACK);
+        g2d.drawRect(baseX, baseY, baseWidth, baseHeight);
+        g2d.drawRect(topX, topY, topWidth, topHeight);
+
+        // Draw connecting lines to complete the shape
+        g2d.drawLine(topX, baseY, baseX, baseY);
+        g2d.drawLine(topX + topWidth, baseY, baseX + baseWidth, baseY);
     }
 
     private void drawFurniture(Graphics g) {
+        // Make sure we have furniture to draw
+        if (furnitureItems == null || furnitureItems.isEmpty()) {
+            System.out.println("No furniture items to draw");
+            return;
+        }
+
+        // Iterate through each furniture item and draw it
         for (FurnitureItem item : furnitureItems) {
+            if (item == null) continue;
+
             Point pos = item.getPosition();
             Dimension size = item.getSize();
 
-            // Draw the furniture item
-            g.setColor(item.getColor());
-            g.fillRect(pos.x, pos.y, size.width, size.height);
+            if (pos == null || size == null) continue;
+
+            // Draw the furniture based on its type
+            switch (item.getType()) {
+                case CHAIR:
+                    drawChair(g, item);
+                    break;
+                case DINING_TABLE:
+                    drawDiningTable(g, item);
+                    break;
+                case SIDE_TABLE:
+                    drawSideTable(g, item);
+                    break;
+                default:
+                    // Default drawing for unknown types
+                    g.setColor(item.getColor());
+                    g.fillRect(pos.x, pos.y, size.width, size.height);
+            }
 
             // Highlight selected item
             if (item == selectedItem) {
@@ -289,6 +440,100 @@ public class Design2D extends JFrame {
             g.setColor(Color.BLACK);
             g.drawString(item.getType().getDisplayName(), pos.x, pos.y - 5);
         }
+    }
+
+    // Draw a chair with a more realistic shape
+    private void drawChair(Graphics g, FurnitureItem item) {
+        Point pos = item.getPosition();
+        Dimension size = item.getSize();
+        Color color = item.getColor();
+
+        // Use darker color for chair legs and back
+        Color darkerColor = new Color(
+                Math.max((int)(color.getRed() * 0.7), 0),
+                Math.max((int)(color.getGreen() * 0.7), 0),
+                Math.max((int)(color.getBlue() * 0.7), 0)
+        );
+
+        // Chair seat
+        g.setColor(color);
+        g.fillRect(pos.x, pos.y, size.width, size.height);
+
+        // Chair back
+        int backHeight = (int)(size.height * 0.8);
+        g.setColor(darkerColor);
+        g.fillRect(pos.x, pos.y - backHeight, size.width/3, backHeight);
+
+        // Chair legs - just small rectangles at corners
+        int legWidth = size.width/8;
+        int legHeight = size.height/4;
+
+        g.setColor(darkerColor);
+        // Front legs
+        g.fillRect(pos.x, pos.y + size.height, legWidth, legHeight);
+        g.fillRect(pos.x + size.width - legWidth, pos.y + size.height, legWidth, legHeight);
+
+        // Back legs - extend from the back
+        g.fillRect(pos.x, pos.y + size.height, legWidth, legHeight);
+        g.fillRect(pos.x + size.width/3 - legWidth, pos.y + size.height, legWidth, legHeight);
+    }
+
+    // Draw a dining table with more details
+    private void drawDiningTable(Graphics g, FurnitureItem item) {
+        Point pos = item.getPosition();
+        Dimension size = item.getSize();
+        Color color = item.getColor();
+
+        // Darker color for table legs
+        Color darkerColor = new Color(
+                Math.max((int)(color.getRed() * 0.7), 0),
+                Math.max((int)(color.getGreen() * 0.7), 0),
+                Math.max((int)(color.getBlue() * 0.7), 0)
+        );
+
+        // Tabletop
+        g.setColor(color);
+        g.fillRect(pos.x, pos.y, size.width, size.height);
+        g.setColor(Color.BLACK);
+        g.drawRect(pos.x, pos.y, size.width, size.height);
+
+        // Table legs
+        int legWidth = size.width/10;
+        int legHeight = size.height/3;
+
+        g.setColor(darkerColor);
+        // Draw four legs at corners
+        g.fillRect(pos.x + legWidth, pos.y + size.height, legWidth, legHeight);
+        g.fillRect(pos.x + size.width - 2*legWidth, pos.y + size.height, legWidth, legHeight);
+        g.fillRect(pos.x + legWidth, pos.y + size.height, legWidth, legHeight);
+        g.fillRect(pos.x + size.width - 2*legWidth, pos.y + size.height, legWidth, legHeight);
+    }
+
+    // Draw a side table with details
+    private void drawSideTable(Graphics g, FurnitureItem item) {
+        Point pos = item.getPosition();
+        Dimension size = item.getSize();
+        Color color = item.getColor();
+
+        // Tabletop
+        g.setColor(color);
+        g.fillRect(pos.x, pos.y, size.width, size.height);
+        g.setColor(Color.BLACK);
+        g.drawRect(pos.x, pos.y, size.width, size.height);
+
+        // Central leg or support
+        int legWidth = size.width/3;
+        int legHeight = size.height/3;
+
+        g.setColor(new Color(
+                Math.max((int)(color.getRed() * 0.8), 0),
+                Math.max((int)(color.getGreen() * 0.8), 0),
+                Math.max((int)(color.getBlue() * 0.8), 0)
+        ));
+
+        // Central support
+        int centerX = pos.x + (size.width - legWidth)/2;
+        g.fillRect(centerX, pos.y + size.height, legWidth, legHeight);
     }
 
     private void addSelectedFurniture() {
